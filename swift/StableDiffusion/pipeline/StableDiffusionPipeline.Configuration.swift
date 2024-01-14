@@ -43,9 +43,9 @@ public struct PipelineConfiguration: Hashable {
     /// Enables progress updates to decode `currentImages` from denoised latent images for better previews
     public var useDenoisedIntermediates: Bool = false
     /// The type of Scheduler to use.
-    public var schedulerType: StableDiffusionScheduler = .pndmScheduler
+    public var schedulerType: StableDiffusionScheduler = .dpmSolverMultistepScheduler
     /// The spacing to use for scheduler sigmas and time steps. Only supported when using `.dpmppScheduler`.
-    public var schedulerTimestepSpacing: TimeStepSpacing = .linspace
+    public var schedulerTimestepSpacing: TimeStepSpacing = .karras
     /// The type of RNG to use
     public var rngType: StableDiffusionRNG = .numpyRNG
     /// Scale factor to use on the latent after encoding
