@@ -176,6 +176,11 @@ public struct StableDiffusionXLPipeline: StableDiffusionPipelineProtocol {
             switch config.schedulerType {
             case .pndmScheduler: return PNDMScheduler(stepCount: config.stepCount)
             case .dpmSolverMultistepScheduler: return DPMSolverMultistepScheduler(stepCount: config.stepCount, timeStepSpacing: config.schedulerTimestepSpacing)
+            case .dpmSolverSinglestepSchedulerKarras:
+                return DPMSolverSinglestepScheduler(
+                    stepCount: config.stepCount,
+                    timeStepSpacing: config.schedulerTimestepSpacing
+                )
             }
         }
 

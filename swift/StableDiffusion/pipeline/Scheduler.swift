@@ -361,3 +361,67 @@ extension Collection {
         return self[index(endIndex, offsetBy: -i)]
     }
 }
+
+@available(iOS 16.2, macOS 13.1, *)
+public extension Scheduler {
+    static func convertToKarras(sigmas: [Double], stepCount: Int) -> [Double] {
+        let sigmaMin: Double = sigmas.last!
+        let sigmaMax = sigmas.first!
+        let rho: Double = 7 // 7.0 is the value used in the paper
+        let ramp: [Double] = linspace(0, 1, stepCount).map { Double($0) }
+        let minInvRho: Double = pow(sigmaMin, (1 / rho))
+        let maxInvRho: Double = pow(sigmaMax, (1 / rho))
+        
+        return ramp.map { pow(maxInvRho + $0 * (minInvRho - maxInvRho), rho) }
+    }
+    
+    static func convertToTimesteps(sigmas: [Double], logSigmas: [Double]) -> [Double] {
+        return sigmas.map { sigma in
+            let logSigma = log(sigma)
+            let dists = logSigmas.map { logSigma - $0 }
+            
+            // last index that is not negative, clipped to last index - 1
+            var lowIndex = dists.reduce(-1) { partialResult, dist in
+                return dist >= 0 && partialResult < dists.endIndex-2 ? partialResult + 1 : partialResult
+            }
+            lowIndex = max(lowIndex, 0)
+            let highIndex = lowIndex + 1
+            
+            let low = logSigmas.count > lowIndex ? logSigmas[lowIndex] : logSigmas[0]
+            let high = logSigmas.count > highIndex ? logSigmas[highIndex] : logSigmas[logSigmas.count - 1]
+            
+            // Interpolate sigmas
+            let w = ((low - logSigma) / (low - high)).clipped(to: 0...1)
+            
+            // transform interpolated value to time range
+            let t = (1 - w) * Double(lowIndex) + w * Double(highIndex)
+            return t
+        }
+    }
+}
+
+@available(iOS 16.2, macOS 13.1, *)
+extension Array where Element == MLShapedArray<Float32> {
+    /// Compute weighted sum of shaped arrays of equal shapes
+    ///
+    /// - Parameters:
+    ///   - weights: The weights each array is multiplied by
+    /// - Returns: sum_i weights[i]*values[i]
+    func weightedSum(_ weights: [Double]) -> MLShapedArray<Float32> {
+        let scalarCount = self.first!.scalarCount
+        assert(weights.count > 1 && self.count == weights.count)
+        assert(self.allSatisfy({ $0.scalarCount == scalarCount }))
+
+        return MLShapedArray(unsafeUninitializedShape: self.first!.shape) { scalars, _ in
+            scalars.initialize(repeating: 0.0)
+            for i in 0..<self.count {
+                let w = Float(weights[i])
+                self[i].withUnsafeShapedBufferPointer { buffer, _, _ in
+                    assert(buffer.count == scalarCount)
+                    // scalars[j] = w * values[i].scalars[j]
+                    cblas_saxpy(Int32(scalarCount), w, buffer.baseAddress, 1, scalars.baseAddress, 1)
+                }
+            }
+        }
+    }
+}
