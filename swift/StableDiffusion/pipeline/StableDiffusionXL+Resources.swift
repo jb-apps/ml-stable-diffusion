@@ -51,6 +51,7 @@ public extension StableDiffusionXLPipeline {
     init(
         resourcesAt baseURL: URL,
         configuration config: MLModelConfiguration = .init(),
+        unetConfig: MLModelConfiguration,
         reduceMemory: Bool = false
     ) throws {
 
@@ -75,7 +76,7 @@ public extension StableDiffusionXLPipeline {
             unet = Unet(chunksAt: [urls.unetChunk1URL, urls.unetChunk2URL],
                         configuration: config)
         } else {
-            unet = Unet(modelAt: urls.unetURL, configuration: config)
+            unet = Unet(modelAt: urls.unetURL, configuration: unetConfig)
         }
 
         // Refiner Unet model
